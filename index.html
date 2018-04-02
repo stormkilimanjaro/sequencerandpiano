@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+	<title>Looper + Piano (Using Tone Oscillator)</title>
+
+<style type="text/css">@import "style.css";</style>
+<!--link href="fancy.css" rel="stylesheet" type="text/css"-->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/0.12.66/Tone.js"></script>
+<script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+<script src="https://rawgit.com/nexus-js/ui/master/dist/NexusUI.js"></script>
+<!--script src="sound.js"></script-->
+
+</head>
+
+<body>
+  <div class="top">
+    <h1 class="neon">Looper</h1>
+  </div>
+  <div id="wrap">
+    <div id="looper">
+      <div id="seq"></div>
+      <div id="piano">
+        <ul id="me">
+          <li id="0" class="white a" > </li>
+          <li id="1" class="black a" ></li>
+          <li id="2" class="white a"></li>
+          <li id="3" class="black a"></li>
+          <li id="4" class="white a"></li>
+          <li id="5" class="black a"></li>
+          <li id="6" class="white a"></li>
+          <li id="7" class="white"></li>
+          <li id="8" class="black a"></li>
+          <li id="9" class="white a"></li>
+          <li id="10" class="black a"></li>
+          <li id="11" class="white a"></li>
+          <li id="12" class="white"></li>
+          <li id="13" class="black a"></li>
+          <li id="14" class="white a"></li>
+          <li class="black a"></li>
+          <li class="white a"></li>
+          <li class="black a"></li>
+          <li class="white a"></li>
+          <li class="white"></li>
+          <li class="black a"></li>
+          <li class="white a"></li>
+          <li class="black a"></li>
+          <li class="white a"></li>
+          <li class="white"></li>
+          <li class="black a"></li>
+          <li class="white a"></li>
+          <li class="black a"></li>
+          <li class="white a"></li>
+          <li class="black a"></li>
+          <li class="white a"></li>
+          <li id="d" class="white"> </li>
+        </ul>
+      </div>
+      <div>
+        <button onclick="start()">start</button>
+        <button onclick="stop()">stop</button>
+      </div>
+    </div>
+</div>
+
+<script>
+
+function pianoFrequency(id){
+var pianofrequencies = [261.626,
+   246.942,
+   233.082,
+   220.000,
+   207.652,
+   195.998,
+   184.997,
+   174.614,
+   164.814,
+   155.563,
+   146.832,
+   138.591,
+   130.813,
+   123.471,
+   116.541,
+   110.000,
+   103.826,
+     97.9989,
+     92.4986,
+     87.3071,
+     82.4069,
+     77.7817,
+     73.4162,
+     69.2957,
+     65.4064,
+     61.7354];
+
+   console.log("Piano frequency run");
+
+   return pianofrequencies[id];
+
+};
+
+$(document).ready(function(){
+  $("li").click(function(){
+    console.log(pianoFrequency(this.id));
+    var osc = new Tone.Oscillator({"frequency": pianoFrequency(this.id), "type": "sine", "volume": -30}).toMaster();
+    var source = new Tone.Source();
+    osc.sync().start(0).stop(0.3);
+    Tone.Transport.start();
+    });
+});
+
+var t;
+var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+//Creating the sequencer - target: seq
+var sequencer = new Nexus.Sequencer('#seq',{
+ 'size': [930,200],
+ 'mode': 'toggle',
+ 'rows': 4,
+ 'columns': 16
+});
+
+var keys = new Tone.Players({
+  "bass" : "https://raw.githubusercontent.com/Tonejs/Tone.js/master/examples/audio/loop/bass.mp3",
+  "kick" : "https://raw.githubusercontent.com/Tonejs/Tone.js/master/examples/audio/loop/kick.mp3",
+  "snare" : "https://raw.githubusercontent.com/Tonejs/Tone.js/master/examples/audio/loop/snare.mp3",
+  "F#" : "https://raw.githubusercontent.com/Tonejs/Tone.js/master/examples/audio/casio/Fs2.mp3",
+}, {
+  "volume" : -10,
+  "fadeOut" : "64n",
+}).toMaster();
+
+var noteNames = ["bass", "kick", "snare", "F#"];
+var loop = new Tone.Sequence(function(time, col){
+  t = time;
+  sequencer.next();
+}, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], "16n");
+Tone.Transport.start();
+
+sequencer.on('step',function(v) {
+  console.log(v);
+  for (var i = 0; i < 4; i++){
+    if (v[i] === 1){
+      var vel = Math.random() * 0.5 + 0.5; //slightly randomized velocities
+      keys.get(noteNames[i]).start(t, 0, "32n", 0, vel);
+    }
+  }
+})
+
+var socket = io();
+
+sequencer.on('change',function(data) {
+    socket.emit('seq change', data);
+  //socket.emit('seq change', data);
+})
+
+function start() {
+  loop.start();
+}
+
+function stop() {
+  loop.stop();
+}
+
+Nexus.context = audioCtx;
+
+function updateSeq(data){
+  sequencer.matrix.set.cell(data.column, data.row, data.state);
+  //$('#messages').append($('<li>').text("set [" + data.row + ", " + data.column + "] to " + data.state));
+}
+
+</script>
+</body>
+</html>
